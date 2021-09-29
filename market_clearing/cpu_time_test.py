@@ -449,7 +449,7 @@ full_model = EnsemblePrescriptiveTree(n_estimators = 20, Nmin = 5, max_features 
 full_model.fit(train_feat_X, train_wide_Y, grid = grid, config = config, 
           parallel = False, scenario_reduction = False, cpu_time = True, n_jobs = 16)
 Prescription = full_model.predict_constr(test_feat_X, train_feat_X, train_wide_Y)
-pickle.dump(full_model, open(result_path+'\\PT_full.sav', 'wb'))
+#pickle.dump(full_model, open(result_path+'\\PT_full.sav', 'wb'))
 
 # Model with scenario reduction (implemented within opt_problem.py)
 
@@ -459,7 +459,7 @@ red_model_10 = EnsemblePrescriptiveTree(n_estimators = 20, Nmin = 5, max_feature
 red_model_10.fit(train_feat_X, train_wide_Y, grid = grid, config = config, 
           parallel = False, scenario_reduction = True, cpu_time = True, num_reduced_scen = 10, n_jobs = 16)
 red_Prescription_10 = red_model_10.predict_constr(test_feat_X, train_feat_X, train_wide_Y)
-pickle.dump(red_model_10, open(result_path+'\\PT_reduced_10.sav', 'wb'))
+#pickle.dump(red_model_10, open(result_path+'\\PT_reduced_10.sav', 'wb'))
 
 # 20 scenarios
 red_model_20 = EnsemblePrescriptiveTree(n_estimators = 20, Nmin = 5, max_features = 5, 
@@ -467,7 +467,7 @@ red_model_20 = EnsemblePrescriptiveTree(n_estimators = 20, Nmin = 5, max_feature
 red_model_20.fit(train_feat_X, train_wide_Y, grid = grid, config = config, 
           parallel = False, scenario_reduction = True, cpu_time = True, num_reduced_scen = 20, n_jobs = 16)
 red_Prescription_20 = red_model_20.predict_constr(test_feat_X, train_feat_X, train_wide_Y)
-pickle.dump(red_model_20, open(result_path+'\\PT_reduced_20.sav', 'wb'))
+#pickle.dump(red_model_20, open(result_path+'\\PT_reduced_20.sav', 'wb'))
         
 # 50 scenarios
 red_model_50 = EnsemblePrescriptiveTree(n_estimators = 20, Nmin = 5, max_features = 5, 
@@ -475,7 +475,7 @@ red_model_50 = EnsemblePrescriptiveTree(n_estimators = 20, Nmin = 5, max_feature
 red_model_50.fit(train_feat_X, train_wide_Y, grid = grid, config = config, 
           parallel = False, scenario_reduction = True, cpu_time = True, num_reduced_scen = 50, n_jobs = 16)
 red_Prescription_50 = red_model_50.predict_constr(test_feat_X, train_feat_X, train_wide_Y)
-pickle.dump(red_model_50, open(result_path+'\\PT_reduced_50.sav', 'wb'))
+#pickle.dump(red_model_50, open(result_path+'\\PT_reduced_50.sav', 'wb'))
 
 
 #%% Evaluate out-of-sample performance
@@ -484,10 +484,9 @@ all_prescriptions = [Prescription, red_Prescription_10, red_Prescription_20, red
 results =  evaluate_realized_costs(all_prescriptions, Node_demand_actual, ['PT', 'PT_10', 'PT_20', 'PT_50'], 
                                    grid, config, plot = False)
 
-pickle.dump(all_prescriptions, open(result_path+'\\all_prescriptions', 'wb'))
+#pickle.dump(all_prescriptions, open(result_path+'\\all_prescriptions', 'wb'))
 results.to_csv(result_path+'\\Total_Costs.csv')
 
-#%%
 cpu_full = np.array(full_model.cpu_time)/60
 cpu_10 = np.array(red_model_10.cpu_time)/60
 cpu_20 = np.array(red_model_20.cpu_time)/60
