@@ -294,7 +294,7 @@ else:
     rt_actions = pickle.load(open(results_folder+'\\aggr_rt_actions.pickle', 'rb'))
 
 
-models = ['FO-Det', 'FO-Prob', 'PT']
+models = ['FO-Det', 'FO-Stoch', 'PF-Stoch']
 colors = ['tab:blue', 'tab:brown', 'tab:green']
 ticks = ['6 months', '1 year', '1.5 years', '2 years'][:-1]
 col_order = ['Deterministic', 'Stochastic', 'Prescriptive Trees']
@@ -305,7 +305,7 @@ plt.figure(figsize=(6,3))
 plt.plot([config['peak_load']*np.abs(pred-load_forecast['Target'].values).mean() for pred in cost_oriented_Pred], '-o', color='tab:green')
 plt.plot([config['peak_load']*np.abs(pred-load_forecast['Target'].values).mean() for pred in expected_load], '-d', color='tab:blue')
 plt.plot([config['peak_load']*np.abs(load_forecast['Target'].values[168:]-load_forecast['Target'].values[:-168]).mean() for pred in expected_load][::-1], '--', color='black')
-plt.legend(['PT', 'FO-Det', 'Seasonal Naive'])
+plt.legend(['PF-Stoch', 'FO-Det', 'Seasonal Naive'])
 plt.xticks(range(len(da_costs)), ticks)
 plt.ylabel('Mean Absolute Error (MW)')
 plt.xlabel('Sample size $n$')
@@ -329,13 +329,13 @@ for i in range(len(total_costs)):
     bar3=plt.bar(x_pos[2], rt_costs[i]['Prescriptive Trees'].mean()/10e2, 
             bottom =  da_costs[i]['Prescriptive Trees'].mean()/10e2, color = 'tab:green', alpha = 1, width=0.2, yerr = rt_costs[i]['Prescriptive Trees'].std()/10e2)
     
-plt.legend(bar1+bar2+bar3, ['FO-Det', 'FO-Stoch', 'PT'], loc = [0.35, 0.9], ncol=3)
+plt.legend(bar1+bar2+bar3, ['FO-Det', 'FO-Stoch', 'PF-Stoch'], loc = [0.3, 0.9], ncol=3)
 plt.xticks(range(len(da_costs)), ticks)
 plt.ylabel(r'Expected Cost ($10^3$\$)')
 plt.xlabel('Sample Size $n$')
 n1 = plt.bar(.5, 0, color = 'grey', alpha = 0.5, width=0.2, label='DA Costs')
 n2 = plt.bar(.5, 0, color = 'grey', alpha = 1, width=0.2, label='RT Costs')
-l1 = fig.legend(n1+n2, ['DA Costs', 'RT Costs'], ncol=2, loc = [0.5, 0.8])
+l1 = fig.legend(n1+n2, ['DA Costs', 'RT Costs'], ncol=2, loc = [0.48, 0.8])
 fig.add_artist(l1)
 ax.set_axisbelow(True)
 plt.savefig(cd+'\\figures\\Cost_Results.pdf')
@@ -364,7 +364,7 @@ color_grad = 1/num_flex_gen
 fig,ax=plt.subplots(figsize=(6,3), constrained_layout=True)
 ax.plot(config['peak_load']*load_forecast['Target'][(day)*24:(day+1)*24].values, color='black', linewidth=2, label='Actual')
 ax.plot(config['peak_load']*load_forecast['Expected'][(day)*24:(day+1)*24].values, '-o', color='tab:blue', linewidth=2, label='FO-Det/Stoch')
-ax.plot(config['peak_load']*cost_oriented_Pred[-1][(day)*24:(day+1)*24], '-d', color='tab:green', linewidth=2, label='PT')
+ax.plot(config['peak_load']*cost_oriented_Pred[-1][(day)*24:(day+1)*24], '-d', color='tab:green', linewidth=2, label='PF-Stoch')
 ax.set_xlabel('Hour')
 ax.set_ylabel('Total Scheduled Production (MW)')
 
@@ -397,7 +397,7 @@ for j, h in enumerate(hour):
                 color = 'tab:brown', alpha = color_grad*(i+1),  edgecolor = 'white', width=0.6)
         b3=plt.bar(j*3+.7, Prescription[sample][day]['p'][gen,h], bottom = Prescription[sample][day]['p'][cost_ind[flex_mask][:i],h].sum(),
                 color = 'tab:green', alpha = color_grad*(i+1), edgecolor = 'white', width=0.6)
-plt.legend(b1+b2+b3, ['FO-Det', 'FO-Stoch', 'PT'])
+plt.legend(b1+b2+b3, ['FO-Det', 'FO-Stoch', 'PF-Stoch'])
 plt.ylim([0, 800])    
 plt.xticks(np.arange(0,(j+1)*3,3), [str(h)+':00' for h in hour])
 plt.xlabel('Hour')

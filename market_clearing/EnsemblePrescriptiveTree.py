@@ -153,7 +153,7 @@ class EnsemblePrescriptiveTree(object):
          
      return Prescription
  
-  def value_oriented_forecast(self, testX, trainX, trainY, parallel = False):
+  def cost_oriented_forecast(self, testX, trainX, trainY, parallel = False):
      ''' Generate Cost-/Value-Oriented Forecasts'''
      
      #Step 1: Estimate weights for weighted SAA

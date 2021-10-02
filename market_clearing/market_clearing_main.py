@@ -623,7 +623,7 @@ if config['train'] ==  True:
     # Generate predictive prescriptions
     print('Generating Predictive Prescriptions and Cost-Oriented Forecasts...')
     Prescription = model.predict_constr(test_feat_X, train_feat_X, train_wide_Y)
-    cost_oriented_Pred = model.value_oriented_forecast(test_feat_X, train_feat_X, train_wide_Y).reshape(-1)
+    cost_oriented_Pred = model.cost_oriented_forecast(test_feat_X, train_feat_X, train_wide_Y).reshape(-1)
     
     # Save results
     if config['save'] == True:

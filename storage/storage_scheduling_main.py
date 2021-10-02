@@ -431,7 +431,7 @@ for j in range(len(start_points)):
 naive_line = plt.plot(range(4), 4*[naive], '--', color = 'black')
 #plt.grid()
 plt.ylabel('Mean Absolute Error (EUR/MWh)')
-plt.legend(ev_line+boxplot['boxes'] + naive_line, ['FO-Det', 'PT', 'Seasonal Naive'])
+plt.legend(ev_line+boxplot['boxes'] + naive_line, ['FO-Det', 'PF', 'Seasonal Naive'])
 #plt.tight_layout()
 plt.xlabel('Sample Size $n$')
 plt.xticks(range(4), sample_length)
@@ -471,7 +471,7 @@ for j, date in enumerate(start_points):
 #Empty lines for second legend
 plt.plot([], color='tab:blue', linewidth=2, label='FO-Det')
 plt.plot([], color='black', linewidth=2, label='SAA')
-plt.plot([], color='tab:green', linewidth=2, label='PT')
+plt.plot([], color='tab:green', linewidth=2, label='PF')
 fig.legend(loc = [0.65, 0.883])
 
 
