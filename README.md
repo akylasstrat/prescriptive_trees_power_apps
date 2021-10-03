@@ -22,9 +22,9 @@ Experiments on scheduling a generic storage device for price arbitrage.
 ```
 storage
 |
-|---data: contains input data
-|---figures: stores plots
-|---results: stores results
+|--- data: contains input data
+|--- figures: stores plots
+|--- results: stores results
 |--- storage_scheduling_main.py: run the experiments, generate plots
 |--- Utility_functions.py: helper functions for data manipulation and probabilistic Forecasting
   ```
