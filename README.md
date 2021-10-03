@@ -19,22 +19,31 @@ Decision-making in the presence of contextual information is a ubiquitous proble
 
 Experiments on scheduling a generic storage device for price arbitrage.
 
-> - `storage`
-  - `data`, `figures`, `results`: folders with input data, plots, and saved results
-  - `storage_scheduling_main.py`: run the experiments, generate plots
-  - `Utility_functions.py`: helper functions for data manipulation and probabilistic Forecasting
+```
+storage
+|
+|---data: contains input data
+|---figures: stores plots
+|---results: stores results
+|--- storage_scheduling_main.py: run the experiments, generate plots
+|--- Utility_functions.py: helper functions for data manipulation and probabilistic Forecasting
+  ```
 
 ## Stochastic Market Clearing and Load Forecasting
 
 Stochastic market clearing with uncertain load and network constraints.
 
-> - `market_clearing`
-  - `data`, `figures`: folders with input data and plots
-  - `results`: folder to store the experiment results
-    - `aggregated_results:` results per sample size. To recreate the plots, store the results in the respective folder
-    - `CPU_results`: results of scenario reduction experiment
-  - `market_clearing_main.py`: run the experiments (main)
-  - `cpu_time_test.py`: run the experiment with scenario reduction
-  - `results_graph.py`: plot the graphs
-  - `forecast_utility_functions.py`: helper functions for data manipulation, probabilistic forecasting, and scenario generation
-  - `optimization_utility_functions.py`: load the network data
+```
+market_clearing
+|
+|--- data: contains input data
+|--- figures: stores plots
+|--- results
+    |--- aggregated_results: results per sample size. To recreate plots, store results in the respective folder
+    |--- CPU_results: results with scenario reduction
+|--- market_clearing_main.py: run the main experiment
+|--- cpu_time_test.py: run the scenario reduction experiment
+|--- results_graphs.py: generate results tables and plots
+|--- forecast_utility_functions.py: helper functions for data manipulation, probabilistic forecasting, and scenario generation
+|--- optimization_utility_functions.py: load the network data
+  ```
