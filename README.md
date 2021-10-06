@@ -2,20 +2,31 @@
 
 This repository contains the code to reproduce the experiments of the paper:
 
-> Prescriptive Trees for Value-oriented Forecasting and Optimization: Applications on Storage Scheduling and Market Clearing (preprint available soon).
+> @unpublished{stratigakos:hal-03363876,
+  TITLE = {{Prescriptive Trees for Value-oriented Forecasting and Optimization: Applications on Storage Scheduling and Market Clearing}},
+  AUTHOR = {Stratigakos, Akylas and Camal, Simon and Michiorri, Andrea and Kariniotakis, Georges},
+  URL = {https://hal.archives-ouvertes.fr/hal-03363876},
+  NOTE = {working paper or preprint},
+  YEAR = {2021},
+  MONTH = Oct,
+  KEYWORDS = {Data-driven optimization ; decision trees ; electricity market ; prescriptive analytics ; value-oriented forecasting},
+  PDF = {https://hal.archives-ouvertes.fr/hal-03363876/file/Preprint_PrescriptiveTrees_Submission.pdf},
+  HAL_ID = {hal-03363876},
+  HAL_VERSION = {v1},
+}
 
  Each application is contained in a separate folder. The key parts are:
 
+ - `GreedyPrescriptiveTree.py`: Train a prescriptive with greedy node splits (similar to CART).
+ - `EnsemblePrescriptiveTree.py`: Train an ensemble of prescriptive trees (*prescriptive forest*). Different randomization algorithms included (Random Forest, ExtraTrees)
+- `opt_problem.py`: Function that defines the specific optimization problem. During training, determines a Sample Average Approximation (SAA) of the data subset (determined by the tree). During prediction, determines a weighted SAA conditional on contextual information.
 - `*_main.py`: Run the experiments.
-- `opt_problem.py`: Function that defines the specific optimization problem, and determines the sample average approximation.
-- `GreedyPrescriptiveTree.py`: Train a prescriptive with greedy node splits (similar to CART).
-- `EnsemblePrescriptiveTree.py`: Train an ensemble of prescriptive trees (*prescriptive forest*).
 
 ## Intro
 
-Decision-making in the presence of contextual information is a ubiquitous problem in modern power systems. The typical data-decisions pipeline comprises forecasting and optimization components deployed in sequence. However, the loss function employed during learning is only a proxy for task-specific costs (e.g. scheduling, trading). This work describes a data-driven alternative to improve prescriptive performance in conditional stochastic optimization problems based on nonparametric machine learning. Specifically, we describe prescriptive trees that minimize task-specific costs during learning, embedded with a scenario reduction procedure to reduce computations, and then derive a weighted Sample Average Approximation of the original problem.
+Decision-making in the presence of contextual information is a ubiquitous problem in modern power systems. The typical data-decisions pipeline comprises forecasting and optimization components deployed in sequence. However, the loss function employed during learning is only a proxy for task-specific costs (e.g. scheduling, trading). This work describes a data-driven alternative to improve prescriptive performance in conditional stochastic optimization problems based on nonparametric machine learning. Specifically, we describe prescriptive trees that minimize task-specific costs during learning, embedded with a scenario reduction procedure to reduce computations, and then derive a weighted Sample Average Approximation of the original problem. We present experimental results in two problems: storage scheduling for price arbitrage and stochastic market clearing with network constraints, respectively associated with electricity price and load forecasting.
 
-## Storage Scheduling and Electricity Price Forecasting
+## Storage Scheduling and Electricity Price Forecasting :battery:
 
 Experiments on scheduling a generic storage device for price arbitrage.
 
@@ -29,7 +40,7 @@ storage
 |--- Utility_functions.py: helper functions for data manipulation and probabilistic Forecasting
   ```
 
-## Stochastic Market Clearing and Load Forecasting
+## Stochastic Market Clearing and Load Forecasting :electric_plug:
 
 Stochastic market clearing with uncertain load and network constraints.
 
