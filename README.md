@@ -2,17 +2,7 @@
 
 This repository contains the code to reproduce the experiments of the paper:
 
-> @unpublished{stratigakos:hal-03363876,
-  TITLE = {{Prescriptive Trees for Value-oriented Forecasting and Optimization: Applications on Storage Scheduling and Market Clearing}},
-  AUTHOR = {Stratigakos, Akylas and Camal, Simon and Michiorri, Andrea and Kariniotakis, Georges},
-  URL = {https://hal.archives-ouvertes.fr/hal-03363876},
-  NOTE = {working paper or preprint},
-  YEAR = {2021},
-  MONTH = Oct,
-  KEYWORDS = {Data-driven optimization ; decision trees ; electricity market ; prescriptive analytics ; value-oriented forecasting},
-  PDF = {https://hal.archives-ouvertes.fr/hal-03363876/file/Preprint_PrescriptiveTrees_Submission.pdf},
-  HAL_ID = {hal-03363876},
-  HAL_VERSION = {v1},
+> Stratigakos, A., Camal, S., Michiorri, A., & Kariniotakis, G. (2021). [Prescriptive Trees for Integrated Forecasting and Optimization Applied in Trading of Renewable Energy](https://hal.archives-ouvertes.fr/hal-03363876v1), working paper or preprint.
 }
 
  Each application is contained in a separate folder. The key parts are:
