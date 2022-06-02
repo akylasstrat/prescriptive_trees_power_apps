@@ -8,6 +8,7 @@ Two-stage problem, uncertain demand
 import cvxpy as cp
 import numpy as np
 from sklearn.cluster import KMeans
+import time 
 
 def opt_problem(Y, grid, config, weights = None, prescribe = False, parallel = False, scenario_reduction = False, num_reduced_scen=10):
     
@@ -100,7 +101,6 @@ def opt_problem(Y, grid, config, weights = None, prescribe = False, parallel = F
                     'R_down': grid['R_down_max'].repeat(horizon,axis=1)}
         
         ############## Real-time balancing problem
-        
         #RT Variables
         r_up= [cp.Variable((n_unit, horizon)) for scen in range(Nscen)]
         r_down= [cp.Variable((n_unit, horizon)) for scen in range(Nscen)]
@@ -140,6 +140,7 @@ def opt_problem(Y, grid, config, weights = None, prescribe = False, parallel = F
         
         prob = cp.Problem(cp.Minimize(RT_cost) , Constraints_RT)
         prob.solve( solver = 'GUROBI', verbose = False)
+
         try:
             #!!! multiply output with initial num_samples, since we are comparing aggregated costs for splitting nodes
             return num_samples*(RT_cost.value), solution

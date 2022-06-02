@@ -16,7 +16,8 @@ import cvxpy as cp
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestRegressor
 from scipy import interpolate, stats
-
+import gurobipy as gp
+import time
 # Add current directory to path
 cd = os.path.dirname(__file__)  
 sys.path.append(cd)
@@ -270,6 +271,169 @@ def deterministic_opt(grid, config, Node_demand_expected):
         Det_solutions.append(solution)    
     return Det_solutions
 
+def deterministic_opt_gp(grid, config, Node_demand_expected):
+    'Solves deterministic DA economic dispatch given point forecasts in Gurobi'
+    horizon = config['horizon']
+    
+    m = gp.Model()
+    m.setParam('OutputFlag', 0)
+    
+    #DA Variables
+    p_G = m.addMVar((grid['n_unit'], horizon), vtype = gp.GRB.CONTINUOUS, lb = 0, name = 'p_G')
+    R_up = m.addMVar((grid['n_unit'], horizon), vtype = gp.GRB.CONTINUOUS, lb = 0)
+    R_down = m.addMVar((grid['n_unit'], horizon), vtype = gp.GRB.CONTINUOUS, lb = 0)
+    Demand_slack = m.addMVar((grid['n_loads'], horizon), vtype = gp.GRB.CONTINUOUS, lb = 0)
+
+    flow_da = m.addMVar((grid['n_lines'], horizon), vtype = gp.GRB.CONTINUOUS, lb = -gp.GRB.INFINITY)
+    theta_da = m.addMVar((grid['n_nodes'], horizon), vtype = gp.GRB.CONTINUOUS, lb = -gp.GRB.INFINITY)
+            
+    # DA Constraints
+    #gen limits
+    m.addConstrs( p_G[:,t] <= grid['Pmax'].reshape(-1) for t in range(horizon))
+    m.addConstrs( R_up[:,t] <= grid['R_up_max'].reshape(-1) for t in range(horizon))
+    m.addConstrs( R_down[:,t] <= grid['R_down_max'].reshape(-1) for t in range(horizon))
+
+    m.addConstrs(p_G[:,t+1]-p_G[:,t] <= grid['Ramp_up_rate'].reshape(-1) for t in range(horizon-1))
+    m.addConstrs(p_G[:,t]-p_G[:,t+1] <= grid['Ramp_down_rate'].reshape(-1) for t in range(horizon-1))
+    
+    # Network flow
+    m.addConstrs(grid['b_diag']@grid['A']@theta_da[:,t] <= grid['Line_Capacity'].reshape(-1) for t in range(horizon))
+    m.addConstrs(grid['b_diag']@grid['A']@theta_da[:,t] >= -grid['Line_Capacity'].reshape(-1) for t in range(horizon))
+
+    m.addConstr(theta_da[0,:] == 0)
+
+    #Node balance
+    Det_solutions = []
+    print('Solving deterministic optimization problem for each day')
+    ndays = int(Node_demand_expected.shape[1]/horizon)
+
+    for i in range(ndays):
+        if i%25==0:print('Day ', i)
+
+        start = i*horizon
+        stop = (i+1)*horizon
+
+        # !!!! Changes each day
+        node_balance = m.addConstrs(grid['node_G']@p_G[:,t] + grid['node_L']@Demand_slack[:,t]\
+                                    -grid['node_L']@Node_demand_expected[:, start:stop][:,t] - grid['B']@theta_da[:,t] == 0 for t in range(horizon))
+    
+        DA_cost = sum([grid['Cost']@p_G[:,t] + grid['VOLL']*Demand_slack[:,t].sum() for t in range(horizon)]) 
+        
+        # Objective
+        m.setObjective(DA_cost, gp.GRB.MINIMIZE)                    
+        m.optimize()
+        
+        for c in [node_balance]:
+            m.remove(c)
+            
+        solution = {'p': p_G.X, 'slack': Demand_slack.X, 'flow':grid['b_diag']@grid['A']@theta_da.X,\
+                    'theta': theta_da.X, 'R_up': R_up.X, 'R_down': R_down.X}
+        Det_solutions.append(solution)    
+
+    return Det_solutions
+
+def stochastic_opt_gp(grid, config, Node_demand_expected):
+    'Solves deterministic DA economic dispatch given point forecasts in Gurobi'
+    horizon = config['horizon']
+    Nscen = config['n_scen']
+    
+    m = gp.Model()
+    m.setParam('OutputFlag', 0)
+    
+    #DA Variables
+    p_G = m.addMVar((grid['n_unit'], horizon), vtype = gp.GRB.CONTINUOUS, lb = 0, name = 'p_G')
+    R_up = m.addMVar((grid['n_unit'], horizon), vtype = gp.GRB.CONTINUOUS, lb = 0)
+    R_down = m.addMVar((grid['n_unit'], horizon), vtype = gp.GRB.CONTINUOUS, lb = 0)
+    Demand_slack = m.addMVar((grid['n_loads'], horizon), vtype = gp.GRB.CONTINUOUS, lb = 0)
+    flow_da = m.addMVar((grid['n_lines'], horizon), vtype = gp.GRB.CONTINUOUS, lb = -gp.GRB.INFINITY)
+    theta_da = m.addMVar((grid['n_nodes'], horizon), vtype = gp.GRB.CONTINUOUS, lb = -gp.GRB.INFINITY)
+    
+    #RT Variables
+    r_up= [m.addMVar((grid['n_unit'], horizon), vtype = gp.GRB.CONTINUOUS, lb = 0) for scen in range(Nscen)]
+    r_down= [m.addMVar((grid['n_unit'], horizon), vtype = gp.GRB.CONTINUOUS, lb = 0) for scen in range(Nscen)]
+    L_shed= [m.addMVar((grid['n_loads'], horizon), vtype = gp.GRB.CONTINUOUS, lb = 0) for scen in range(Nscen)]
+    flow_rt= [m.addMVar((grid['n_lines'], horizon), vtype = gp.GRB.CONTINUOUS, lb = -gp.GRB.INFINITY) for scen in range(Nscen)]
+    theta_rt= [m.addMVar((grid['n_nodes'], horizon), vtype = gp.GRB.CONTINUOUS, lb = -gp.GRB.INFINITY) for scen in range(Nscen)]
+    G_shed = [m.addMVar((grid['n_unit'], horizon), vtype = gp.GRB.CONTINUOUS, lb = 0) for scen in range(Nscen)]
+    
+    ###### DA Constraints
+    #gen limits
+    m.addConstrs( p_G[:,t] <= grid['Pmax'].reshape(-1) for t in range(horizon))
+    m.addConstrs( R_up[:,t] <= grid['R_up_max'].reshape(-1) for t in range(horizon))
+    m.addConstrs( R_down[:,t] <= grid['R_down_max'].reshape(-1) for t in range(horizon))
+
+    m.addConstrs(p_G[:,t+1]-p_G[:,t] <= grid['Ramp_up_rate'].reshape(-1) for t in range(horizon-1))
+    m.addConstrs(p_G[:,t]-p_G[:,t+1] <= grid['Ramp_down_rate'].reshape(-1) for t in range(horizon-1))
+    
+    # Network flow
+    m.addConstrs(grid['b_diag']@grid['A']@theta_da[:,t] <= grid['Line_Capacity'].reshape(-1) for t in range(horizon))
+    m.addConstrs(grid['b_diag']@grid['A']@theta_da[:,t] >= -grid['Line_Capacity'].reshape(-1) for t in range(horizon))
+    m.addConstr(theta_da[0,:] == 0)
+    
+    DA_cost = sum([grid['Cost']@p_G[:,t] + grid['VOLL']*Demand_slack[:,t].sum() for t in range(horizon)]) 
+
+    ###### RT constraints
+    RT_cost = 0
+    
+    Constraints_RT = []
+    for scen in range(Nscen): 
+        m.addConstrs( r_up[scen][:,t] <=-p_G[:,t] + grid['Pmax'].reshape(-1) for t in range(horizon))
+        m.addConstrs( r_up[scen][:,t] <= R_up[:,t] for t in range(horizon))
+
+        m.addConstrs( r_down[scen][:,t] <= R_down[:,t] for t in range(horizon))
+        m.addConstrs( r_down[scen][:,t] <= p_G[:,t] for t in range(horizon))
+
+        m.addConstrs( G_shed[scen][:,t] <= p_G[:,t] for t in range(horizon))
+
+        RT_cost = RT_cost + 1/Nscen*sum([grid['Cost_reg_up']@r_up[scen][:,t] - grid['Cost_reg_down']@r_down[scen][:,t] \
+                                 + grid['VOLL']*L_shed[scen][:,t].sum() +  grid['gshed']@G_shed[scen][:,t] \
+                                     for t in range(horizon)])
+
+
+
+    !!!!!
+    m.addConstrs( L_shed[scen][:,t] <= Node_demand_scenarios[:,start:stop,scen][:,t] for t in range(horizon))
+
+
+    #Node injections
+    Constraints_RT += [ grid['node_G']@(r_up[scen]-r_down[scen]-G_shed[scen]) \
+                       + grid['node_L']@(L_shed[scen]-Node_demand_scenarios[:,start:stop,scen]+Node_demand_expected[:,start:stop]) \
+                       == grid['B']@(theta_rt[scen]-theta_da)]
+    
+        
+    #Node balance
+    Stoch_solutions = []
+    print('Solving stochastic optimization problem for each day')
+    ndays = int(Node_demand_expected.shape[1]/horizon)
+
+    for i in range(ndays):
+        if i%25==0:print('Day ', i)
+
+        start = i*horizon
+        stop = (i+1)*horizon
+
+        # !!!! Changes each day
+        node_balance_da = m.addConstrs(grid['node_G']@p_G[:,t] + grid['node_L']@Demand_slack[:,t]\
+                                    -grid['node_L']@Node_demand_expected[:, start:stop][:,t] - grid['B']@theta_da[:,t] == 0 for t in range(horizon))
+
+        # !!!! Changes each day
+        node_balance_rt = [m.addConstrs(grid['node_G']@(r_up[scen][:,t]-r_down[scen][:,t]-G_shed[scen][:,t]) \
+                           + grid['node_L']@L_shed[scen][:,t]+grid['node_L']@(Node_demand_expected[:,start:stop] - Node_demand_scenarios[:,start:stop,scen])[:,t] \
+                           == grid['B']@(theta_rt[scen][:,t]-theta_da[:,t]) for t in range(horizon)) for scen in N_scen]
+                                   
+        # Objective
+        m.setObjective(DA_cost+RT_cost, gp.GRB.MINIMIZE)                    
+        m.optimize()
+        
+        for c in [node_balance]:
+            m.remove(c)
+            
+        solution = {'p': p_G.X, 'slack': Demand_slack.X, 'flow':grid['b_diag']@grid['A']@theta_da.X,\
+                    'theta': theta_da.X, 'R_up': R_up.X, 'R_down': R_down.X}
+        Det_solutions.append(solution)    
+
+    return Det_solutions
+
 def stochastic_opt(grid, config, Node_demand_expected, Node_demand_scenarios):
     'Solves deterministic DA economic dispatch given point forecasts'
     horizon = config['horizon']
@@ -369,6 +533,153 @@ def stochastic_opt(grid, config, Node_demand_expected, Node_demand_scenarios):
         Stoch_solutions.append(solution)
         if prob.objective.value ==  None:
             print('Infeasible or unbound')    
+    return Stoch_solutions
+    'Solves deterministic DA economic dispatch given point forecasts'
+    horizon = config['horizon']
+    Nscen = config['n_scen']
+    
+    #DA Variables
+    p_G = cp.Variable((grid['n_unit'], horizon))
+    R_up = cp.Variable((grid['n_unit'], horizon))
+    R_down = cp.Variable((grid['n_unit'], horizon))
+    flow_da = cp.Variable((grid['n_lines'],horizon))
+    theta_da = cp.Variable((grid['n_nodes'], horizon))
+    Demand_slack = cp.Variable((grid['n_loads'], horizon))
+
+    #RT Variables
+    r_up= [cp.Variable((grid['n_unit'], horizon)) for scen in range(Nscen)]
+    r_down= [cp.Variable((grid['n_unit'], horizon)) for scen in range(Nscen)]
+    L_shed= [cp.Variable((grid['n_loads'],horizon)) for scen in range(Nscen)]
+    flow_rt= [cp.Variable((grid['n_lines'],horizon)) for scen in range(Nscen)]
+    theta_rt = [cp.Variable((grid['n_nodes'], horizon)) for scen in range(Nscen)]
+    G_shed = [cp.Variable((grid['n_unit'], horizon)) for scen in range(Nscen)]
+
+    Stoch_solutions = []
+    
+    print('Solving Stochastic Optimization...')
+    ndays = int(Node_demand_expected.shape[1]/horizon)
+    for i in range(ndays):
+        if i%25==0:print('Day: ',i)
+        start = i*horizon
+        stop = (i+1)*horizon
+    
+            
+        ###### DA constraints
+        Constraints_DA = []
+        #Generator Constraints
+        Constraints_DA += [p_G <= grid['Pmax'].repeat(horizon,axis=1),
+                        p_G[:,1:]-p_G[:,:-1] <= grid['Ramp_up_rate'].repeat(horizon-1,axis=1),
+                        p_G[:,:-1]-p_G[:,1:] <= grid['Ramp_down_rate'].repeat(horizon-1,axis=1), 
+                        R_up <= grid['R_up_max'].repeat(horizon,axis=1),
+                        R_down <= grid['R_down_max'].repeat(horizon,axis=1),
+                        p_G>=0, R_up>=0, R_down>=0, Demand_slack >= 0]
+    
+        
+        DA_cost = cp.sum(grid['Cost']@p_G) + grid['VOLL']*cp.sum(Demand_slack)
+                
+        #DA Network flow
+        Constraints_DA += [flow_da == grid['b_diag']@grid['A']@theta_da,
+                        flow_da <= grid['Line_Capacity'].repeat(horizon,axis=1), 
+                        flow_da >= -grid['Line_Capacity'].repeat(horizon,axis=1),
+                        theta_da[0,:] == 0]
+    
+        #DA Node balance
+        Constraints_DA += [ grid['node_G']@p_G + grid['node_L']@(Demand_slack-Node_demand_expected[:,start:stop] ) == grid['B']@theta_da]
+        DA_cost = cp.sum(grid['Cost']@p_G) + grid['VOLL']*cp.sum(Demand_slack)
+    
+        # Actually only care about RT costs not the DA costs (these just depend on demand)
+        prob = cp.Problem(cp.Minimize(DA_cost) , Constraints_DA)
+        prob.solve( solver = 'GUROBI', verbose = False)
+        
+        
+        ###### RT constraints
+        start_1 = time.time()
+        RT_cost = 0
+        
+        Constraints_RT = []
+        for scen in range(Nscen):       
+            # Feasbility limits 
+            Constraints_RT += [ r_up[scen] <= -p_G.value + grid['Pmax'].repeat(horizon,axis=1),
+                               r_up[scen] <= R_up.value,      
+                                  r_down[scen] <= p_G.value,
+                                 r_down[scen] <= R_down.value,
+                                 L_shed[scen] <= Node_demand_scenarios[:,start:stop,scen],
+                                 G_shed[scen] <= p_G.value,
+                                 r_up[scen] >= 0, r_down[scen] >= 0, 
+                                 L_shed[scen] >= 0, G_shed[scen] >= 0]
+
+    
+            ############## Real-time balancing problem
+            #RT Network flow
+            Constraints_RT += [flow_rt[scen] == grid['b_diag']@grid['A']@theta_rt[scen],
+                               flow_rt[scen] <= grid['Line_Capacity'].repeat(horizon,axis=1), 
+                               flow_rt[scen] >= -grid['Line_Capacity'].repeat(horizon,axis=1),
+                               theta_rt[scen][0,:] == 0] 
+            
+            #Node injections
+            Constraints_RT += [ grid['node_G']@(r_up[scen]-r_down[scen]-G_shed[scen]) \
+                               + grid['node_L']@(L_shed[scen]-Node_demand_scenarios[:,start:stop,scen]+Node_demand_expected[:,start:stop]) \
+                               == grid['B']@(theta_rt[scen]-theta_da.value)]
+        
+            RT_cost = RT_cost + 1/Nscen*cp.sum( grid['Cost_reg_up']@r_up[scen] 
+                                               - grid['Cost_reg_down']@r_down[scen]\
+                                                + grid['VOLL']*cp.sum(L_shed[scen],axis=0) + grid['gshed']*cp.sum(G_shed[scen],axis=0) ) 
+        
+        # Actually only care about RT costs not the DA costs (these just depend on demand)
+        prob = cp.Problem(cp.Minimize(RT_cost) , Constraints_RT)
+        prob.solve( solver = 'GUROBI', verbose = False)
+        print('SAA time: ', time.time()-start_1)
+        
+        ###### RT constraints
+        #RT Variables
+        r_up= cp.Variable((grid['n_unit'], horizon))
+        r_down= cp.Variable((grid['n_unit'], horizon))
+        L_shed= cp.Variable((grid['n_loads'],horizon))
+        flow_rt= cp.Variable((grid['n_lines'],horizon))
+        theta_rt = cp.Variable((grid['n_nodes'], horizon))
+        G_shed = cp.Variable((grid['n_unit'], horizon))
+        
+        start_2 = time.time()
+        RT_cost = 0
+        
+        for scen in range(Nscen):       
+            Constraints_RT = []
+
+            # Feasbility limits 
+            Constraints_RT += [ r_up <= -p_G.value + grid['Pmax'].repeat(horizon,axis=1),
+                               r_up <= R_up.value,      
+                                  r_down <= p_G.value,
+                                 r_down <= R_down.value,
+                                 L_shed <= Node_demand_scenarios[:,start:stop,scen],
+                                 G_shed <= p_G.value,
+                                 r_up >= 0, r_down >= 0, 
+                                 L_shed >= 0, G_shed >= 0]
+
+    
+            ############## Real-time balancing problem
+            #RT Network flow
+            Constraints_RT += [flow_rt == grid['b_diag']@grid['A']@theta_rt,
+                               flow_rt <= grid['Line_Capacity'].repeat(horizon,axis=1), 
+                               flow_rt >= -grid['Line_Capacity'].repeat(horizon,axis=1),
+                               theta_rt[0,:] == 0] 
+                
+            #Node injections
+            Constraints_RT += [ grid['node_G']@(r_up-r_down-G_shed) \
+                               + grid['node_L']@(L_shed-Node_demand_scenarios[:,start:stop,scen]+Node_demand_expected[:,start:stop]) \
+                               == grid['B']@(theta_rt-theta_da.value)]
+        
+            RT_cost = 1/Nscen*cp.sum( grid['Cost_reg_up']@r_up 
+                                               - grid['Cost_reg_down']@r_down\
+                                                + grid['VOLL']*cp.sum(L_shed,axis=0) + grid['gshed']*cp.sum(G_shed,axis=0) ) 
+        
+            # Actually only care about RT costs not the DA costs (these just depend on demand)
+            prob = cp.Problem(cp.Minimize(RT_cost) , Constraints_RT)
+            prob.solve( solver = 'GUROBI', verbose = False)
+        print('SAA time: ', time.time()-start_2)
+        
+        
+        
+        
     return Stoch_solutions
 
 def evaluate_realized_costs(solutions, Node_demand_actual, col_names, grid, config, plot = True):
@@ -549,7 +860,7 @@ def evaluate_single_day(day, solutions, Node_demand_actual, col_names, grid, con
 def problem_parameters():
     parameters = {} 
     # Script parameters
-    parameters['train'] = True # If true, then train learning components, else load results
+    parameters['train'] = False # If true, then train learning components, else load results
     parameters['save'] = True # Save DA dispatch decisions and trained models
 
     # Optimization Parameters
@@ -565,7 +876,6 @@ def problem_parameters():
     #parameters['start_date'] = '2010-06-01' # Controls for sample size
     #parameters['start_date'] = '2010-01-01'
     parameters['start_date'] = '2009-06-01' 
-    
     parameters['split_date'] = '2011-01-01' # Validation split
     return parameters
 
