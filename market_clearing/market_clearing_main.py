@@ -277,6 +277,9 @@ def deterministic_opt_gp(grid, config, Node_demand_expected):
     
     m = gp.Model()
     m.setParam('OutputFlag', 0)
+    m.setParam('Method', 1)
+    m.setParam('LPWarmStart', 2)
+    m.setParam('Presolve', 2)
     
     #DA Variables
     p_G = m.addMVar((grid['n_unit'], horizon), vtype = gp.GRB.CONTINUOUS, lb = 0, name = 'p_G')
@@ -329,7 +332,7 @@ def deterministic_opt_gp(grid, config, Node_demand_expected):
         solution = {'p': p_G.X, 'slack': Demand_slack.X, 'flow':grid['b_diag']@grid['A']@theta_da.X,\
                     'theta': theta_da.X, 'R_up': R_up.X, 'R_down': R_down.X}
         Det_solutions.append(solution)    
-
+        #print('Runtime: ', m.Runtime)
     return Det_solutions
 
 def stochastic_opt_gp(grid, config, Node_demand_expected):
@@ -910,6 +913,13 @@ Node_demand_scenarios = np.zeros((grid['n_loads'], len(system_load_scenarios), c
 for scen in range(config['n_scen']):
     Node_demand_scenarios[:,:,scen] = np.outer(grid['node_demand_percentage'], system_load_scenarios[:,scen])
 
+#%%
+import time
+start = time.time()
+
+Det_solutions = deterministic_opt_gp(grid, config, Node_demand_expected)
+
+print('Total runtime: ', time.time() - start)
 #%% Train/optimize deterministic/stochastic policy and prescriptive trees
 
 if config['train'] ==  True:    
