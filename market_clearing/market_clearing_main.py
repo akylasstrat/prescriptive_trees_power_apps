@@ -325,13 +325,13 @@ def deterministic_opt_gp(grid, config, Node_demand_expected):
         # Objective
         m.setObjective(DA_cost, gp.GRB.MINIMIZE)                    
         m.optimize()
-        
         for c in [node_balance]:
             m.remove(c)
             
         solution = {'p': p_G.X, 'slack': Demand_slack.X, 'flow':grid['b_diag']@grid['A']@theta_da.X,\
                     'theta': theta_da.X, 'R_up': R_up.X, 'R_down': R_down.X}
         Det_solutions.append(solution)    
+
         #print('Runtime: ', m.Runtime)
     return Det_solutions
 
