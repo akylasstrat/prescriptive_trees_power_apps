@@ -22,8 +22,6 @@ sys.path.append(cd)
 from EnsemblePrescriptiveTree import EnsemblePrescriptiveTree
 from Utility_functions import *
 
-plt.rcParams['figure.dpi'] = 600
-
 ######################## Forecasting functions
 
 def generate_scenarios(Target, prob_pred, Quantiles, horizon = 24, n_scen = 100, plot = True):
@@ -256,6 +254,13 @@ def saa_opt(config, bess, forecasts, trainY):
     
     return saa_out, saa_in, saa_state
      
+plt.rcParams['figure.dpi'] = 600
+plt.rcParams['figure.figsize'] = (3.5, 2) # Height can be changed
+plt.rcParams['font.size'] = 8
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.serif'] = 'Times New Roman'
+plt.rcParams["mathtext.fontset"] = 'dejavuserif'
+
 #%% Problem parameters
 def bess_params():
     'BESS technical parameters'
@@ -280,14 +285,14 @@ def problem_parameters():
     parameters['n_scen'] = 200    #Number of scenarios
     parameters['horizon'] = 24 #Optimization/forecast horizon
     parameters['train'] = True # Train forecasting models + prescriptive trees
-    parameters['save'] = True # Train forecasting models + prescriptive trees
+    parameters['save'] = False # Train forecasting models + prescriptive trees
     
     return parameters
 
 #%% Main Script
     
 # Load data
-market_df = pd.read_excel(cd+'\\data\\Market_Data_processed.xlsx', index_col = 0)
+market_df = pd.read_csv(cd+'\\data\\Market_Data_processed.csv', index_col = 0, parse_dates= True)
 market_df.index = market_df.index.round('min')
 
 #%%
@@ -365,7 +370,7 @@ if config['train'] == True:
                   B_max = bess['B_max'], B_min = bess['B_min'], gamma = bess['gamma'], epsilon = bess['epsilon'],
                   in_eff = bess['in_eff'], out_eff = bess['out_eff'], z0 = bess['z0'], parallel = True,
                   n_jobs = -1, cpu_time = True)
-                
+            
             print('Generating Predictive Prescriptions')
             Prescription = model.predict_constr(new_testX, new_trainX, new_trainY)
     
@@ -411,7 +416,7 @@ sample_length = ['6 months', '1 year', '1.5 years', '2 years']
 boxcolor = ['tab:blue', 'tab:green']
 naive = np.abs(Actual_Price.values[168:]-Actual_Price.values[:-168]).mean()
 
-plt.figure(figsize=(6,3), constrained_layout=True)
+plt.figure(figsize=(3.5,2), constrained_layout=True)
 
 for j in range(len(start_points)):    
     ev_metric = []
@@ -435,12 +440,18 @@ plt.legend(ev_line+boxplot['boxes'] + naive_line, ['FO-Det', 'PF', 'Seasonal Nai
 #plt.tight_layout()
 plt.xlabel('Sample Size $n$')
 plt.xticks(range(4), sample_length)
-plt.savefig(cd+'\\figures\\BESS_forecast_MAE.pdf')
+if config['save']: plt.savefig(cd+'\\figures\\BESS_forecast_MAE.pdf')
 plt.show()
 
 #%% Parreto front plot
+# dictionary for subplots
+ax_lbl = [['6m', '1y', '1.5y', '2y']]
+gs_kw = dict(width_ratios=[1, 1], height_ratios=[1, 1])
 
-fig, axs = plt.subplots(2,2, figsize=(6,6), constrained_layout=True)
+#fig, ax = plt.subplot_mosaic(ax_lbl, constrained_layout = True, figsize = (3.5, 1.5*2), 
+#                             gridspec_kw = gs_kw)
+
+fig, axs = plt.subplots(4,1, figsize=(3.5, 4), constrained_layout=True, sharex = True)
 
 start_points = ['2018-06-01', '2018-01-01', '2017-06-08', '2017-01-08']
 
@@ -448,7 +459,8 @@ boxcolor = ['tab:blue', 'black', 'tab:green']
 
 line_style = ['-', '--', '-.', 'dotted']
 
-ind=[[0,0], [0,1], [1,0], [1,1]]
+ind=[0,1,2,3]
+
 for j, date in enumerate(start_points):
 
     aggr_prof = pd.concat([r[j].sum() for r in Sensitivity_Results[:-1]])
@@ -456,35 +468,42 @@ for j, date in enumerate(start_points):
     aggr_penalty = aggr_obj+aggr_prof 
     
     for k,m in enumerate(['Deterministic', 'SAA', 'PT']):        
-        axs[ind[j][0],ind[j][1]].plot(aggr_penalty[m], aggr_prof[m], linestyle = line_style[j],
+        axs[ind[j]].plot(aggr_penalty[m], aggr_prof[m], linestyle = line_style[j],
                  color = boxcolor[k], linewidth=2)
         
         for g in range(len(gamma[:-1])):
-            axs[ind[j][0],ind[j][1]].plot(aggr_penalty[m][g], aggr_prof[m][g], 'd', markersize = g*1.8+2.75, color = boxcolor[k])
+            axs[ind[j]].plot(aggr_penalty[m][g], aggr_prof[m][g], 'd', markersize = g*1.8+2.75, color = boxcolor[k])
             
             
-    axs[ind[j][0],ind[j][1]].set_ylim([1200, 2300])    
-    axs[ind[j][0],ind[j][1]].set_xlim([0, 750])    
-    axs[ind[j][0],ind[j][1]].set_ylabel('Profit (EUR/MWh)')
-    axs[ind[j][0],ind[j][1]].set_xlabel(r'$\gamma || z^{soc}-z_0||_2^2+\epsilon || z^{out}||_2^2 +\epsilon || z^{in}||_2^2$')
+    axs[ind[j]].set_ylim([1200, 2300])    
+    axs[ind[j]].set_ylabel('Profit (EUR/MWh)')
+
+plt.xlim([0, 700])    
+plt.xlabel(r'$\gamma || z^{soc}-z_0||_2^2+\epsilon || z^{out}||_2^2 +\epsilon || z^{in}||_2^2$')
 
 #Empty lines for second legend
 plt.plot([], color='tab:blue', linewidth=2, label='FO-Det')
 plt.plot([], color='black', linewidth=2, label='SAA')
 plt.plot([], color='tab:green', linewidth=2, label='PF')
-fig.legend(loc = [0.65, 0.883])
+#fig.legend(loc = [0.25, 0.883], ncol = 3)
 
+fig.legend( fontsize=6, ncol=3, loc = (1, .8), 
+                 bbox_to_anchor=(0.1, -.05))
 
 #Empty lines for second legend
 m1=plt.plot([], linestyle=line_style[0], color='gray', label='6m')
 m2=plt.plot([], linestyle=line_style[1], color='gray', label='1y')
 m3=plt.plot([], linestyle=line_style[2], color='gray', label='1.5y')
 m4=plt.plot([], linestyle=line_style[3], color='gray', label='2y')
-leg2 = fig.legend(m1+m2+m3+m4, ['6m', '1y', '1.5y', '2y'], loc = [0.85, 0.85])
-fig.add_artist(leg2)
+leg2 = fig.legend(m1+m2+m3+m4, ['6m', '1y', '1.5y', '2y'], fontsize=6, ncol=4, loc = (1, .8), 
+                 bbox_to_anchor=(0.1, -.1))
+#fig.add_artist(leg2)
+#fig.legend( fontsize=6, ncol=4, loc = (1, .8), 
+#                 bbox_to_anchor=(0.1, -.2))
 
-plt.savefig(cd+'\\figures\\BESS_pareto.pdf')
+if config['save']: plt.savefig(cd+'\\figures\\BESS_pareto.pdf')
 plt.show()
+
 
 
 #%% Task-loss improvement relative to optimization parameters (NOT INCLUDED IN PAPER)
@@ -504,7 +523,7 @@ ax.set_axisbelow(True)
 plt.legend(['6m', '1y', '1.5y', '2y'])
 plt.grid()
 fig.tight_layout()
-plt.savefig(cd+'\\figures\\BESS_loss_reg_param.pdf')
+if config['save']: plt.savefig(cd+'\\figures\\BESS_loss_reg_param.pdf')
 fig.show()
 
 
