@@ -1,6 +1,6 @@
 # Prescriptive Trees for Value-oriented Forecasting and Optimization
 
-This repository contains the code to reproduce the experiments of the following paper:
+This repository contains the code to reproduce the experiments of the following work:
 
 > @unpublished{stratigakos:hal-03363876,
   TITLE = {{Prescriptive Trees for Value-oriented Forecasting and Optimization: Applications on Storage Scheduling and Market Clearing}},
@@ -9,10 +9,22 @@ This repository contains the code to reproduce the experiments of the following 
   NOTE = {working paper or preprint},
   YEAR = {2021},
   MONTH = Oct,
-  KEYWORDS = {Data-driven optimization ; decision trees ; electricity market ; prescriptive analytics ; value-oriented forecasting},
   PDF = {https://hal.archives-ouvertes.fr/hal-03363876/file/Preprint_PrescriptiveTrees_Submission.pdf},
   HAL_ID = {hal-03363876},
   HAL_VERSION = {v1},
+}
+
+You can also cite our published work on the same methodology:
+
+> @article{stratigakos2022prescriptive,
+  title={Prescriptive trees for integrated forecasting and optimization applied in trading of renewable energy},
+  author={Stratigakos, Akylas and Camal, Simon and Michiorri, Andrea and Kariniotakis, Georges},
+  journal={IEEE Transactions on Power Systems},
+  volume={37},
+  number={6},
+  pages={4696--4708},
+  year={2022},
+  publisher={IEEE}
 }
 
 Each application is contained in a separate folder. The key components are:
