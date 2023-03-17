@@ -25,11 +25,7 @@ Each application is contained in a separate folder. The key components are:
 
 ## Intro
 
-<<<<<<< HEAD
 Decision-making in the presence of contextual information is a ubiquitous problem in modern power systems. The typical data-decisions pipeline comprises forecasting and optimization components deployed in sequence. However, the loss function employed during learning is only a proxy for task-specific costs (e.g. scheduling, trading). This work describes a data-driven alternative to improve prescriptive performance in conditional stochastic optimization problems based on nonparametric machine learning. Specifically, we describe prescriptive trees that minimize task-specific costs during learning, embedded with a scenario reduction procedure to reduce computations, and then derive a weighted Sample Average Approximation of the original problem. We present experimental results for two problems: storage scheduling for price arbitrage and stochastic market clearing with network constraints, respectively associated with electricity price and load forecasting.
-=======
-Decision-making in the presence of contextual information is a ubiquitous problem in modern power systems. The typical data-decisions pipeline comprises forecasting and optimization components deployed in sequence. However, the loss function employed during learning is only a proxy for task-specific costs (e.g. scheduling, trading). This work describes a data-driven alternative to improve prescriptive performance in conditional stochastic optimization problems based on nonparametric machine learning. Specifically, we describe prescriptive trees that minimize task-specific costs during learning, embedded with a scenario reduction procedure to reduce computations, and then derive a weighted Sample Average Approximation of the original problem. We present experimental results in two problems: storage scheduling for price arbitrage and stochastic market clearing with network constraints, respectively associated with electricity price and load forecasting.
->>>>>>> 7aab7b7fca7234bcb7a33665ee9d25339c69c099
 
 ## Storage Scheduling and Electricity Price Forecasting :battery:
 
