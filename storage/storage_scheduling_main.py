@@ -264,6 +264,7 @@ plt.rcParams["mathtext.fontset"] = 'dejavuserif'
 #%% Problem parameters
 def bess_params():
     'BESS technical parameters'
+    
     bess = {}
     bess['c_in'] = 0.5  #Limit on charge speed
     bess['c_out'] = 0.2  #Limit on discharge speed
