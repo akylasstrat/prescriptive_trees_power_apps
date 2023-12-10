@@ -16,7 +16,7 @@ References:
 import numpy as np
 from math import sqrt
 from GreedyPrescriptiveTree import GreedyPrescriptiveTree
-from opt_problem import *
+from det_opt_problem import *
 import time
 
 #from forecast_opt_problem import *
@@ -116,7 +116,30 @@ class EnsemblePrescriptiveTree(object):
                  #print('New Node: ', node)
              Leaf_id[i,j] = tree.Node_id[node]
      return Leaf_id
-         
+
+  def find_weights(self, testX, trainX):
+     ''' Return local weights'''
+     
+     #Step 1: Estimate weights for weighted SAA
+     Leaf_nodes = self.apply(trainX) # nObs*nTrees: a_ij shows the leaf node for observation i in tree j
+     Index = self.apply(testX) # Leaf node for test set
+     nTrees = self.n_estimators
+     Weights = np.zeros(( len(testX), len(trainX) ))
+     #print(Weights.shape)
+     #Estimate sample weights
+     print('Retrieving weights...')
+     for i in range(len(testX)):
+         #New query point
+         x0 = Index[i:i+1, :]
+         #Find observations in terminal nodes/leaves (all trees)
+         obs = 1*(x0.repeat(len(trainX), axis = 0) == Leaf_nodes)
+         #Cardinality of leaves
+         cardinality = np.sum(obs, axis = 0).reshape(-1,1).T.repeat(len(trainX), axis = 0)
+         #Update weights
+         Weights[i,:] = (obs/cardinality).sum(axis = 1)/nTrees
+
+     return Weights
+ 
   def predict_constr(self, testX, trainX, trainY, parallel = False):
      ''' Generate predictive prescriptions'''
      

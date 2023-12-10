@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 #Import Libraries
 import numpy as np
-from opt_problem import *
+from det_opt_problem import *
 #from decision_solver import *
 from math import sqrt
 
@@ -62,6 +62,15 @@ class GreedyPrescriptiveTree(object):
     self.feat_type = [type(X[0,j]) for j in range(X.shape[1])]
     node_id_counter = 0
     
+    sorted_X = np.sort(X.copy(), 0)
+    # if type_split == 'random', update set of candidate splits at each node
+    # else, set of candidate splits is fixed beforehand
+    
+    if self.type_split == 'quant':
+        cand_binary_splits = np.quantile(X, quant.round(3),0).round(2)
+    elif self.type_split == 'regular':
+        cand_binary_splits = (sorted_X[:-1] + sorted_X[1:])/2 
+
     for node in self.Node_id:
         if self.Depth_id[node] >= self.D:
             #Fix as leaf node
@@ -73,12 +82,13 @@ class GreedyPrescriptiveTree(object):
         if self.max_features == 'auto':
             #Include all features
             feat_selected = np.arange(num_features)
+        elif self.max_features == 'sqrt':
+            p_select = int(sqrt(num_features))
+            #Sample features
+            feat_selected = np.random.choice(range(num_features), p_select, replace = False)
+
         else:
-            #!!!!! Do I sample with or without replacement here?
-            if self.max_features == 'sqrt':    
-                p_select = int(sqrt(num_features))
-            else:
-                p_select = int(self.max_features)
+            p_select = int(self.max_features)
             #Sample features
             feat_selected = np.random.choice(range(num_features), p_select, replace = False)
 
@@ -87,8 +97,13 @@ class GreedyPrescriptiveTree(object):
         #Update only with data that falls in subtree
         sub_X = X[index_nodes[node]].copy()
         sub_Y = Y[index_nodes[node]].copy()
-        
-        
+
+        if self.type_split == 'random':
+            cand_binary_splits = [np.random.uniform(low=sub_X[:,j].min(), high = sub_X[:,j].max()) 
+                                  for j in range(num_features)]
+            cand_binary_splits = np.array(cand_binary_splits).reshape(1,-1)
+            
+        #print(f'Binary splits:{cand_binary_splits}')
         '''Candidate splitting points: either check all (very slow), check quantiles (good enough)
         or if the ExtraTree algorithm is used, pick split at random'''
         #sorted_X = np.sort(trainX, axis = 0)
@@ -111,6 +126,7 @@ class GreedyPrescriptiveTree(object):
             
         #Initialize placeholder for subtree error
         Best_Error = self.sub_Error[node]
+        #print(f'Root node error:{Best_Error}')
         #Check for splitting node (separate function)
         solution_count = 0
         apply_split = False
@@ -120,7 +136,7 @@ class GreedyPrescriptiveTree(object):
             
             #If leaf has constant values, skip the evaluation, else select candidate split points
             # Needs to check whether is categorical or quantitative feature
-            
+            '''
             #If feature is categorical
             if self.feat_type[cand_feat] == str:
                 
@@ -149,8 +165,10 @@ class GreedyPrescriptiveTree(object):
                     elif self.type_split == 'random':    
                         Candidate_Splits = [np.random.uniform(low=sub_X[:,cand_feat].min(), high = sub_X[:,cand_feat].max())]
             
-                        
-            for i, cand_split in enumerate(Candidate_Splits):    
+            '''      
+
+            for i, cand_split in enumerate(cand_binary_splits[:,cand_feat]):    
+
                 if self.feat_type[cand_feat] == str:                    
                     mask_left = sub_X[:,cand_feat] == cand_split
                     mask_right = sub_X[:,cand_feat] != cand_split
@@ -167,6 +185,7 @@ class GreedyPrescriptiveTree(object):
                 right_tree_Error, Pred_right = opt_problem(sub_Y[mask_right], weights = None, **self.decision_kwargs)
                 #print('Candidate Split: ', left_tree_Error+right_tree_Error)
                 #Update split
+                #print(f'Cand. Split Error:{left_tree_Error + right_tree_Error}')
                 if (left_tree_Error + right_tree_Error) < Best_Error:
                     
                     solution_count = solution_count + 1
@@ -185,7 +204,7 @@ class GreedyPrescriptiveTree(object):
                     
         #If split is applied, update tree structure            
         if apply_split == True:
-            
+            #print(f'Found split at feature:{self.feature[node]}')
             self.parent_node.extend(2*[node])
             
             self.sub_Error.append(best_left_error)

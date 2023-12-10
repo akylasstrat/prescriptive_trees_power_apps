@@ -10,7 +10,7 @@ Utility functions for forecasting. Includes:
 import pandas as pd
 import numpy as np
 from scipy.ndimage.interpolation import shift
-from statsmodels.tsa.stattools import pacf
+#from statsmodels.tsa.stattools import pacf
 import matplotlib.pyplot as plt
 from sklearn.inspection import permutation_importance
 from sklearn.decomposition import PCA
