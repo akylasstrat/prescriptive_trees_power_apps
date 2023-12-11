@@ -120,16 +120,16 @@ def DA_RT_maker(grid, w_predictions, w_actual, bus,
     #da_market.addConstr( exp_w == predicted_y)
     
     # Network constraints
-    da_market.addConstr(node_inj == (node_G@p_G + node_Wind@exp_w - node_L@grid['Pd'] ))
+    da_market.addConstr(node_inj == (node_G@p_G + node_Wind@exp_w - node_L@(grid['Pd']-slack_u) ))
     da_market.addConstr(flow_da == PTDF@node_inj )                    
     da_market.addConstr(flow_da <= grid['Line_Capacity'].reshape(-1))
     da_market.addConstr(flow_da >= -grid['Line_Capacity'].reshape(-1))
         
     # Node balance for t for DC-OPF
-    da_market.addConstr( p_G.sum() + exp_w.sum() == grid['Pd'].sum())
+    da_market.addConstr( p_G.sum() + exp_w.sum() + slack_u.sum() == grid['Pd'].sum())
 
     # DA cost for specific day/ expression        
-    da_market.setObjective(Cost@p_G, gp.GRB.MINIMIZE)                    
+    da_market.setObjective(Cost@p_G + grid['VOLL']*slack_u.sum(), gp.GRB.MINIMIZE)                    
     
     
     #da_market.optimize()
@@ -144,13 +144,15 @@ def DA_RT_maker(grid, w_predictions, w_actual, bus,
     # DA Variables
     p_DA = rt_prob.addMVar((grid['n_unit']), vtype = gp.GRB.CONTINUOUS, lb = 0)
     r_up = rt_prob.addMVar((grid['n_unit']), vtype = gp.GRB.CONTINUOUS, lb = 0)
+    G_shed = rt_prob.addMVar((grid['n_unit']), vtype = gp.GRB.CONTINUOUS, lb = 0)
+
     r_down = rt_prob.addMVar((grid['n_unit']), vtype = gp.GRB.CONTINUOUS, lb = 0)
     L_shed = rt_prob.addMVar((grid['n_loads']), vtype = gp.GRB.CONTINUOUS, lb = 0)
     flow_rt = rt_prob.addMVar((grid['n_lines']), vtype = gp.GRB.CONTINUOUS, lb = -gp.GRB.INFINITY)
     #theta_rt = rt_prob.addMVar((grid['n_nodes']), vtype = gp.GRB.CONTINUOUS, lb = -gp.GRB.INFINITY)
     node_inj_rt = rt_prob.addMVar((grid['n_nodes']), vtype = gp.GRB.CONTINUOUS, lb = -gp.GRB.INFINITY)
     w_rt = rt_prob.addMVar((1), vtype = gp.GRB.CONTINUOUS, lb = -gp.GRB.INFINITY)
-    
+
     # Technical limits
     rt_prob.addConstr( r_up <= -p_DA + Pmax.reshape(-1))
     rt_prob.addConstr( r_up <= grid['R_u_max'].reshape(-1))
@@ -158,16 +160,17 @@ def DA_RT_maker(grid, w_predictions, w_actual, bus,
     rt_prob.addConstr( r_down <= p_DA)
     rt_prob.addConstr( r_down <= grid['R_d_max'].reshape(-1))
 
+    rt_prob.addConstr( G_shed <= Pmax.reshape(-1))
     rt_prob.addConstr( L_shed <= grid['Pd'].reshape(-1))
         
     # Network constraints
-    rt_prob.addConstr(node_inj_rt == (node_G@(r_up-r_down + p_DA) + node_Wind@(w_rt) - node_L@(grid['Pd']-L_shed) ))
+    rt_prob.addConstr(node_inj_rt == (node_G@(r_up-r_down + p_DA - G_shed) + node_Wind@(w_rt) - node_L@(grid['Pd']-L_shed) ))
     rt_prob.addConstr(flow_rt == PTDF@node_inj_rt)                    
     rt_prob.addConstr(flow_rt <= grid['Line_Capacity'].reshape(-1))
     rt_prob.addConstr(flow_rt >= -grid['Line_Capacity'].reshape(-1))
     
-    rt_prob.addConstr( p_DA.sum() + r_up.sum() -r_down.sum() + w_rt.sum() + L_shed.sum() == grid['Pd'].sum())
-    rt_prob.setObjective(grid['C_up']@r_up - grid['C_down']@r_down + VoLL*L_shed.sum())
+    rt_prob.addConstr( p_DA.sum() + r_up.sum() -r_down.sum() -G_shed.sum() + w_rt.sum() + L_shed.sum() == grid['Pd'].sum())
+    rt_prob.setObjective(grid['C_up']@r_up - grid['C_down']@r_down + VoLL*L_shed.sum() + VoLL*G_shed.sum())
     
     DA_cost = []
     RT_cost = []
@@ -187,7 +190,6 @@ def DA_RT_maker(grid, w_predictions, w_actual, bus,
         #Solve RT market with actual wind realization, store results
         c2 = rt_prob.addConstr(w_rt == w_actual[i])
         c3 = rt_prob.addConstr(p_DA == p_G.X)
-        
         rt_prob.optimize()
         
         RT_cost.append(rt_prob.ObjVal)
