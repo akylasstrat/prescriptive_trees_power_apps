@@ -62,6 +62,9 @@ class GreedyPrescriptiveTree(object):
     self.feat_type = [type(X[0,j]) for j in range(X.shape[1])]
     node_id_counter = 0
     
+    # find candidate parallel splits from data
+    cand_binary_splits = np.quantile(X, quant.round(3),0)
+
     for node in self.Node_id:
         if self.Depth_id[node] >= self.D:
             #Fix as leaf node
@@ -121,6 +124,7 @@ class GreedyPrescriptiveTree(object):
             #If leaf has constant values, skip the evaluation, else select candidate split points
             # Needs to check whether is categorical or quantitative feature
             
+            '''
             #If feature is categorical
             if self.feat_type[cand_feat] == str:
                 
@@ -148,9 +152,9 @@ class GreedyPrescriptiveTree(object):
                         #Candidate_Splits = (sorted_X[:-1] + sorted_X[1:])/2 
                     elif self.type_split == 'random':    
                         Candidate_Splits = [np.random.uniform(low=sub_X[:,cand_feat].min(), high = sub_X[:,cand_feat].max())]
-            
+            '''
                         
-            for i, cand_split in enumerate(Candidate_Splits):    
+            for i, cand_split in enumerate(cand_binary_splits[:,cand_feat]):    
                 if self.feat_type[cand_feat] == str:                    
                     mask_left = sub_X[:,cand_feat] == cand_split
                     mask_right = sub_X[:,cand_feat] != cand_split
